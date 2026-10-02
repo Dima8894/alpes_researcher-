@@ -1,4 +1,4 @@
-# ALPES Researcher
+# Alpes Researcher
 
 This repository is a ChatGPT-first conversational research template, not a web app.
 Read chatgpt/00_PROJECT_INSTRUCTIONS.txt, then the three numbered methodology files.

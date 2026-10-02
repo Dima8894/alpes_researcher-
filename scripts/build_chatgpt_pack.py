@@ -5,7 +5,7 @@ from pathlib import Path
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-INTRO = '''ALPES Researcher | Экспорт PDF и Word | Версия 1.0
+INTRO = '''Alpes Researcher | Экспорт PDF и Word | Версия 1.0
 
 Для ChatGPT/агента, не для выполнения пользователем.
 При доступном Python сохрани код ниже как export_report.py во временной папке.
@@ -60,7 +60,7 @@ def main():
     names = ['docs/START_HERE.txt','LICENSE','ATTRIBUTION.md'] + [f'chatgpt/{name}' for name in (
         '00_PROJECT_INSTRUCTIONS.txt','01_ONBOARDING.txt','02_RESEARCH.txt','03_DELIVERABLES.txt','04_EXPORTER.txt')]
     dist = ROOT/'dist'; dist.mkdir(exist_ok=True)
-    path = dist/'ALPES-ChatGPT-Starter.zip'
+    path = dist/'Alpes-ChatGPT-Starter.zip'
     with zipfile.ZipFile(path, 'w', zipfile.ZIP_DEFLATED) as archive:
         for name in names:
             archive.write(ROOT/name, 'START_HERE.txt' if name == 'docs/START_HERE.txt' else name)

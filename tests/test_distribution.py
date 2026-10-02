@@ -20,7 +20,7 @@ class DistributionTests(unittest.TestCase):
             self.assertTrue((ROOT/'chatgpt'/filename).exists())
 
     def test_pack_is_allowlisted(self):
-        with zipfile.ZipFile(ROOT/'dist/ALPES-ChatGPT-Starter.zip') as archive:
+        with zipfile.ZipFile(ROOT/'dist/Alpes-ChatGPT-Starter.zip') as archive:
             expected={'START_HERE.txt','LICENSE','ATTRIBUTION.md'} | {f'chatgpt/{p.name}' for p in (ROOT/'chatgpt').glob('*.txt')}
             self.assertEqual(set(archive.namelist()),expected)
             for name in archive.namelist():

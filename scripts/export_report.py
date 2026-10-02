@@ -170,7 +170,7 @@ def write_pdf(data, path, font):
         canvas.setFillColor(colors.HexColor('#526175'))
         canvas.drawRightString(A4[0]-56, 28, str(doc.page))
     SimpleDocTemplate(str(path), pagesize=A4, rightMargin=56, leftMargin=56,
-                      topMargin=48, bottomMargin=48, title=data['title'], author='ALPES Researcher').build(
+                      topMargin=48, bottomMargin=48, title=data['title'], author='Alpes Researcher').build(
                           story, onFirstPage=page_number, onLaterPages=page_number)
 
 
@@ -199,8 +199,8 @@ def write_docx(data, path):
     doc.styles['Title'].font.color.rgb = RGBColor.from_string('152438')
     doc.styles['Heading 1'].font.size = Pt(15)
     doc.styles['Heading 1'].font.color.rgb = RGBColor.from_string('166148')
-    doc.core_properties.author = 'ALPES Researcher'
-    doc.core_properties.last_modified_by = 'ALPES Researcher'
+    doc.core_properties.author = 'Alpes Researcher'
+    doc.core_properties.last_modified_by = 'Alpes Researcher'
     doc.core_properties.title = data['title']
     lookup = {s['id']: s for s in data['sources']}
     for kind, value in blocks(data):

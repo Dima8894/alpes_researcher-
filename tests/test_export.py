@@ -64,7 +64,7 @@ class ExportTests(unittest.TestCase):
                 doctext = ''.join(xml.itertext())
                 self.assertIn('https://example.org/', archive.read('word/_rels/document.xml.rels').decode())
                 core = archive.read('docProps/core.xml').decode()
-                self.assertIn('ALPES Researcher', core)
+                self.assertIn('Alpes Researcher', core)
             for kind, value in m.blocks(self.data):
                 if kind != 'refs':
                     for rendered in (pdftext, doctext):

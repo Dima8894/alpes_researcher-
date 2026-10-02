@@ -1,4 +1,6 @@
-ALPES Researcher — запуск в ChatGPT
+Alpes Researcher — запуск в ChatGPT
+Открытый подарок компаниям от команды разработки Альпес (Alpes).
+О компании: https://alpes-it.ru/
 
 1. Создайте отдельный проект в ChatGPT.
 2. Скопируйте весь текст chatgpt/00_PROJECT_INSTRUCTIONS.txt в инструкции проекта.
