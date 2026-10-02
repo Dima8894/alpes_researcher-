@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build a small allowlisted distribution, never package private working data."""
 import argparse
+import base64
 from pathlib import Path
 import zipfile
 
@@ -25,6 +26,8 @@ INTRO = '''Alpes Researcher | Экспорт PDF и Word | Версия 1.0
  "status": "checked", "entity": "Объект", "period": "Период данных",
  "published_at": "Дата публикации либо неизвестно", "note": "Ограничение/краткая выдержка"}]
 }
+У каждого items/summary можно указать label — короткий смысловой заголовок.
+Название отчёта: «Исследование компании: [название]». Manrope встроен в код ниже.
 summary — короткое резюме до пяти пунктов, ориентир до 1200 знаков; детали в sections.
 Это схема, не готовые данные; даты и поля нужно заполнить реально проверенными значениями.
 kind: fact, claim, hypothesis, gap, action. fact/claim требуют sources с существующими ID.
@@ -43,7 +46,9 @@ BEGIN PYTHON
 
 
 def generated():
-    return INTRO + (ROOT/'scripts/export_report.py').read_text(encoding='utf-8') + '\nEND PYTHON\n'
+    fonts = {name: base64.b64encode((ROOT/'assets/fonts'/name).read_bytes()).decode('ascii') for name in ('Manrope-Regular.ttf', 'Manrope-Bold.ttf')}
+    license_text = (ROOT/'assets/fonts/Manrope-OFL.txt').read_text()
+    return INTRO + '# Embedded Manrope fonts, SIL OFL 1.1. License follows.\n' + '\n'.join(('# '+line).rstrip() for line in license_text.splitlines()) + '\n_EMBEDDED_FONTS = ' + repr(fonts) + '\n' + (ROOT/'scripts/export_report.py').read_text(encoding='utf-8') + '\nEND PYTHON\n'
 
 
 def main():

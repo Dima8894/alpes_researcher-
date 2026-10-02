@@ -90,6 +90,21 @@ class ExportTests(unittest.TestCase):
             self.assertNotIn('<!doctype html>', ledger)
             self.assertEqual(list(dest.glob('*.html')), [])
 
+    def test_pack_exports_without_repository_fonts(self):
+        code = (ROOT/'chatgpt/04_EXPORTER.txt').read_text().split('BEGIN PYTHON\n', 1)[1].rsplit('\nEND PYTHON', 1)[0]
+        ns = {'__name__': 'pack_exporter', '__file__': '/unavailable/export_report.py'}
+        exec(compile(code, 'pack_exporter', 'exec'), ns)
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp)/'result'
+            ns['export'](self.data, dest)
+            from pypdf import PdfReader
+            reader = PdfReader(dest/'REPORT.pdf')
+            names = {str(font.get_object().get('/BaseFont')) for page in reader.pages
+                     for font in page['/Resources']['/Font'].get_object().values()}
+            self.assertTrue(any('Manrope-Regular' in name for name in names))
+            self.assertTrue(any('Manrope-Bold' in name for name in names))
+            self.assertIn(self.data['title'], reader.pages[0].extract_text().replace('\n', ' '))
+
     def test_failed_validation_creates_nothing(self):
         self.data['summary'] = []
         with tempfile.TemporaryDirectory() as tmp:

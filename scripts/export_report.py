@@ -85,6 +85,7 @@ def validate(data):
             if not isinstance(item, dict) or item.get('kind') not in KINDS:
                 raise ValueError("У утверждения нужен kind: fact/claim/hypothesis/gap/action")
             text(item.get('text'), 'item.text', 6000)
+            if 'label' in item: text(item['label'], 'item.label', 120)
             refs = item.get('sources', [])
             if not isinstance(refs, list) or any(not isinstance(r, str) or r not in ids for r in refs):
                 raise ValueError("Утверждение ссылается на неизвестный источник")
@@ -99,8 +100,16 @@ def validate(data):
 
 
 def font_path(explicit=None):
+    if not explicit and globals().get('_EMBEDDED_FONTS'):
+        import base64
+        folder = Path(tempfile.gettempdir()) / 'alpes-report-fonts-v15'
+        folder.mkdir(exist_ok=True)
+        for name, encoded in _EMBEDDED_FONTS.items():
+            (folder / name).write_bytes(base64.b64decode(encoded))
+        return folder / 'Manrope-Regular.ttf'
     candidates = [Path(explicit)] if explicit else []
-    candidates += [Path(__file__).resolve().parents[1] / 'assets/fonts/PTSans-Regular.ttf',
+    candidates += [Path(__file__).resolve().parents[1] / 'assets/fonts/Manrope-Regular.ttf',
+                   Path(__file__).resolve().parents[1] / 'assets/fonts/PTSans-Regular.ttf',
                    Path('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf'),
                    Path('/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf')]
     for candidate in candidates:
@@ -119,13 +128,15 @@ def blocks(data):
             yield ('pagebreak', '')
         yield ('heading', section['title'])
         for item in section['items']:
-            yield ('body', KINDS[item['kind']] + ': ' + item['text'])
+            if item.get('label'):
+                yield ('label', item['label'])
+            prefix = KINDS[item['kind']] + ': ' if item['kind'] in ('claim', 'hypothesis', 'gap') else ''
+            yield ('body', prefix + item['text'])
             if item['kind'] == 'hypothesis':
                 yield ('body', 'Альтернативное объяснение: ' + item['alternative'])
                 yield ('body', 'Вопрос для проверки: ' + item['question'])
             if item.get('sources'):
                 yield ('refs', item['sources'])
-    yield ('pagebreak', '')
     yield ('heading', 'Источники и границы проверки')
     for source in data['sources']:
         yield ('body', f"{source['id']} · {source['title']} · {STATUS_NAMES[source['status']]} · проверка {source['checked_at']}")
@@ -139,26 +150,24 @@ def blocks(data):
 
 def write_pdf(data, path, font):
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_LEFT
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
-    pdfmetrics.registerFont(TTFont('Alpes', str(font)))
-    styles = {
-        key: ParagraphStyle(key, fontName='Alpes', fontSize=size, leading=leading,
-             spaceAfter=after, spaceBefore=before, textColor=colors.HexColor(color),
-             alignment=TA_LEFT, keepWithNext=key in ('title', 'heading'), splitLongWords=True)
-        for key, size, leading, after, before, color in [
-            ('title', 22, 27, 12, 0, '#152438'), ('heading', 15, 19, 9, 14, '#166148'),
-            ('body', 11, 16, 8, 0, '#263348'), ('meta', 9, 13, 12, 0, '#526175'),
-            ('refs', 9, 13, 8, 0, '#166148')]
-    }
-    styles['brief'] = ParagraphStyle('brief', parent=styles['body'], fontSize=11,
-        leading=16, backColor=colors.HexColor('#eef5f2'), borderPadding=12,
-        spaceBefore=8, spaceAfter=14)
-    lookup = {s['id']: s for s in data['sources']}
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak
+    pdfmetrics.registerFont(TTFont('ReportRegular', str(font)))
+    bold = font.with_name('Manrope-Bold.ttf') if font.name == 'Manrope-Regular.ttf' else font
+    pdfmetrics.registerFont(TTFont('ReportBold', str(bold if bold.exists() else font)))
+    styles = {}
+    for key, size, leading, after, before, strong in [
+        ('title', 25, 31, 16, 0, True), ('heading', 17, 23, 12, 22, True),
+        ('label', 10.5, 15, 5, 13, True), ('body', 10.5, 16, 9, 0, False),
+        ('meta', 8.5, 13, 12, 0, False), ('refs', 8, 12, 9, 0, False)]:
+        styles[key] = ParagraphStyle(key, fontName='ReportBold' if strong else 'ReportRegular',
+            fontSize=size, leading=leading, spaceAfter=after, spaceBefore=before,
+            textColor=colors.HexColor('#191b20' if key not in ('meta','refs') else '#626874'),
+            keepWithNext=key in ('title','heading','label'), splitLongWords=True)
+    lookup = {source['id']: source for source in data['sources']}
     story = []
     in_brief = True
     for kind, value in blocks(data):
@@ -169,35 +178,28 @@ def write_pdf(data, path, font):
         if kind == 'refs':
             lines = []
             for sid in value:
-                s = lookup[sid]
-                label = escape(sid if in_brief else sid + ' — ' + s['title'])
-                lines.append(f'<link href="{escape(s["url"], quote=True)}" color="#166148">{label}</link>' if s.get('url') else label)
+                source = lookup[sid]
+                label = escape(sid if in_brief else sid + ' — ' + source['title'])
+                lines.append(f'<link href="{escape(source["url"], quote=True)}">{label}</link>' if source.get('url') else label)
             markup = ' · '.join(lines)
         else:
             markup = escape(value).replace('\n', '<br/>')
-        style = styles['brief'] if in_brief and kind == 'body' and not value.startswith('Задача:') else styles[kind]
-        story.append(Paragraph(markup, style))
+        story.append(Paragraph(markup, styles[kind]))
     def page_number(canvas, doc):
         canvas.saveState()
-        canvas.setFillColor(colors.HexColor('#152438'))
-        canvas.rect(0, A4[1]-45, A4[0], 45, fill=1, stroke=0)
-        canvas.setFillColor(colors.white)
-        canvas.setFont('Alpes', 12)
-        canvas.drawString(56, A4[1]-28, 'АЛЬПЕС')
-        canvas.setFont('Alpes', 9)
-        canvas.drawRightString(A4[0]-56, A4[1]-28, 'ИССЛЕДОВАНИЕ КОМПАНИИ')
-        canvas.setStrokeColor(colors.HexColor('#cbded6'))
-        canvas.line(56, 44, A4[0]-56, 44)
-        canvas.setFont('Alpes', 8)
-        canvas.setFillColor(colors.HexColor('#526175'))
-        canvas.drawString(56, 30, 'Основано на методологии компании Альпес')
-        canvas.setFillColor(colors.HexColor('#166148'))
-        canvas.drawString(56, 18, 'alpes-it.ru')
-        canvas.linkURL('https://alpes-it.ru', (56, 16, 112, 28), relative=0)
-        canvas.drawRightString(A4[0]-56, 25, str(doc.page))
+        canvas.setFont('ReportRegular', 8)
+        canvas.setFillColor(colors.HexColor('#626874'))
+        if doc.page > 1:
+            canvas.drawString(54, A4[1]-31, 'ИССЛЕДОВАНИЕ КОМПАНИИ · ' + data['date'])
+        canvas.setStrokeColor(colors.HexColor('#e1e4e8'))
+        canvas.line(54, 47, A4[0]-54, 47)
+        canvas.setFont('ReportRegular', 7.5)
+        canvas.drawString(54, 32, 'Основано на методологии компании Альпес · alpes-it.ru')
+        canvas.linkURL('https://alpes-it.ru', (54, 28, 330, 41), relative=0)
+        canvas.drawRightString(A4[0]-54, 32, str(doc.page))
         canvas.restoreState()
-    SimpleDocTemplate(str(path), pagesize=A4, rightMargin=56, leftMargin=56,
-                      topMargin=65, bottomMargin=61, title=data['title'], author='Alpes Researcher').build(
+    SimpleDocTemplate(str(path), pagesize=A4, rightMargin=54, leftMargin=54,
+                      topMargin=55, bottomMargin=67, title=data['title'], author='Alpes Researcher').build(
                           story, onFirstPage=page_number, onLaterPages=page_number)
 
 
@@ -212,20 +214,26 @@ def write_docx(data, path):
     section.page_width, section.page_height = Cm(21), Cm(29.7)
     section.top_margin = section.bottom_margin = Cm(1.8)
     section.left_margin = section.right_margin = Cm(2)
-    for name in ('Normal', 'Title', 'Heading 1'):
+    for name in ('Normal', 'Title', 'Heading 1', 'Heading 2'):
         doc.styles[name].font.name = 'Arial'
     normal = doc.styles['Normal']
-    normal.font.size = Pt(11)
-    normal.paragraph_format.line_spacing = 1.2
+    normal.font.size = Pt(10.5)
+    normal.paragraph_format.line_spacing = 1.45
     normal.paragraph_format.space_after = Pt(8)
     # Remove template-inherited paragraph borders; keep the report visually quiet.
     for style in doc.styles:
         for border in list(style.element.iter(qn('w:pBdr'))):
             border.getparent().remove(border)
-    doc.styles['Title'].font.size = Pt(22)
+    doc.styles['Title'].font.size = Pt(25)
+    doc.styles['Title'].font.bold = True
     doc.styles['Title'].font.color.rgb = RGBColor.from_string('000000')
     doc.styles['Heading 1'].font.size = Pt(15)
-    doc.styles['Heading 1'].font.color.rgb = RGBColor.from_string('166148')
+    doc.styles['Heading 1'].font.color.rgb = RGBColor.from_string('191B20')
+    doc.styles['Heading 1'].font.bold = True
+    doc.styles['Heading 1'].paragraph_format.space_before = Pt(20)
+    doc.styles['Heading 2'].font.size = Pt(11)
+    doc.styles['Heading 2'].font.bold = True
+    doc.styles['Heading 2'].font.color.rgb = RGBColor.from_string('191B20')
     doc.core_properties.author = 'Alpes Researcher'
     doc.core_properties.last_modified_by = 'Alpes Researcher'
     doc.core_properties.title = data['title']
@@ -240,6 +248,7 @@ def write_docx(data, path):
         if kind == 'pagebreak': doc.add_page_break()
         elif kind == 'title': doc.add_paragraph(value, 'Title')
         elif kind == 'heading': doc.add_heading(value, 1)
+        elif kind == 'label': doc.add_heading(value, 2)
         elif kind == 'refs':
             p = doc.add_paragraph()
             for i, sid in enumerate(value):
@@ -253,7 +262,7 @@ def write_docx(data, path):
                 link.set(qn('r:id'), p.part.relate_to(s['url'], RT.HYPERLINK, is_external=True))
                 run = OxmlElement('w:r')
                 props = OxmlElement('w:rPr')
-                color = OxmlElement('w:color'); color.set(qn('w:val'), '166148'); props.append(color)
+                color = OxmlElement('w:color'); color.set(qn('w:val'), '626874'); props.append(color)
                 run.append(props)
                 node = OxmlElement('w:t'); node.text = label; run.append(node)
                 link.append(run); p._p.append(link)
