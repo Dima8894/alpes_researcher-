@@ -114,7 +114,9 @@ def blocks(data):
     yield ('title', data['title'])
     yield ('meta', f"Срез: {data['date']} · {data['identity']}")
     yield ('body', 'Задача: ' + data['objective'])
-    for section in [{'title': 'Главное для решения', 'items': data['summary']}, *data['sections']]:
+    for index, section in enumerate([{'title': 'Главное за минуту', 'items': data['summary']}, *data['sections']]):
+        if index == 1:
+            yield ('pagebreak', '')
         yield ('heading', section['title'])
         for item in section['items']:
             yield ('body', KINDS[item['kind']] + ': ' + item['text'])
@@ -123,6 +125,7 @@ def blocks(data):
                 yield ('body', 'Вопрос для проверки: ' + item['question'])
             if item.get('sources'):
                 yield ('refs', item['sources'])
+    yield ('pagebreak', '')
     yield ('heading', 'Источники и границы проверки')
     for source in data['sources']:
         yield ('body', f"{source['id']} · {source['title']} · {STATUS_NAMES[source['status']]} · проверка {source['checked_at']}")
@@ -141,7 +144,7 @@ def write_pdf(data, path, font):
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
     pdfmetrics.registerFont(TTFont('Alpes', str(font)))
     styles = {
         key: ParagraphStyle(key, fontName='Alpes', fontSize=size, leading=leading,
@@ -152,25 +155,49 @@ def write_pdf(data, path, font):
             ('body', 11, 16, 8, 0, '#263348'), ('meta', 9, 13, 12, 0, '#526175'),
             ('refs', 9, 13, 8, 0, '#166148')]
     }
+    styles['brief'] = ParagraphStyle('brief', parent=styles['body'], fontSize=11,
+        leading=16, backColor=colors.HexColor('#eef5f2'), borderPadding=12,
+        spaceBefore=8, spaceAfter=14)
     lookup = {s['id']: s for s in data['sources']}
     story = []
+    in_brief = True
     for kind, value in blocks(data):
+        if kind == 'pagebreak':
+            in_brief = False
+            story.append(PageBreak())
+            continue
         if kind == 'refs':
             lines = []
             for sid in value:
                 s = lookup[sid]
-                label = escape(sid + ' — ' + s['title'])
+                label = escape(sid if in_brief else sid + ' — ' + s['title'])
                 lines.append(f'<link href="{escape(s["url"], quote=True)}" color="#166148">{label}</link>' if s.get('url') else label)
             markup = ' · '.join(lines)
         else:
             markup = escape(value).replace('\n', '<br/>')
-        story.append(Paragraph(markup, styles[kind]))
+        style = styles['brief'] if in_brief and kind == 'body' and not value.startswith('Задача:') else styles[kind]
+        story.append(Paragraph(markup, style))
     def page_number(canvas, doc):
+        canvas.saveState()
+        canvas.setFillColor(colors.HexColor('#152438'))
+        canvas.rect(0, A4[1]-45, A4[0], 45, fill=1, stroke=0)
+        canvas.setFillColor(colors.white)
+        canvas.setFont('Alpes', 12)
+        canvas.drawString(56, A4[1]-28, 'АЛЬПЕС')
         canvas.setFont('Alpes', 9)
+        canvas.drawRightString(A4[0]-56, A4[1]-28, 'ИССЛЕДОВАНИЕ КОМПАНИИ')
+        canvas.setStrokeColor(colors.HexColor('#cbded6'))
+        canvas.line(56, 44, A4[0]-56, 44)
+        canvas.setFont('Alpes', 8)
         canvas.setFillColor(colors.HexColor('#526175'))
-        canvas.drawRightString(A4[0]-56, 28, str(doc.page))
+        canvas.drawString(56, 30, 'Основано на методологии компании Альпес')
+        canvas.setFillColor(colors.HexColor('#166148'))
+        canvas.drawString(56, 18, 'alpes-it.ru')
+        canvas.linkURL('https://alpes-it.ru', (56, 16, 112, 28), relative=0)
+        canvas.drawRightString(A4[0]-56, 25, str(doc.page))
+        canvas.restoreState()
     SimpleDocTemplate(str(path), pagesize=A4, rightMargin=56, leftMargin=56,
-                      topMargin=48, bottomMargin=48, title=data['title'], author='Alpes Researcher').build(
+                      topMargin=65, bottomMargin=61, title=data['title'], author='Alpes Researcher').build(
                           story, onFirstPage=page_number, onLaterPages=page_number)
 
 
@@ -196,15 +223,22 @@ def write_docx(data, path):
         for border in list(style.element.iter(qn('w:pBdr'))):
             border.getparent().remove(border)
     doc.styles['Title'].font.size = Pt(22)
-    doc.styles['Title'].font.color.rgb = RGBColor.from_string('152438')
+    doc.styles['Title'].font.color.rgb = RGBColor.from_string('000000')
     doc.styles['Heading 1'].font.size = Pt(15)
     doc.styles['Heading 1'].font.color.rgb = RGBColor.from_string('166148')
     doc.core_properties.author = 'Alpes Researcher'
     doc.core_properties.last_modified_by = 'Alpes Researcher'
     doc.core_properties.title = data['title']
+    footer = section.footer.paragraphs[0]
+    footer.add_run('Основано на методологии компании Альпес · ').font.size = Pt(8)
+    link = OxmlElement('w:hyperlink')
+    link.set(qn('r:id'), footer.part.relate_to('https://alpes-it.ru', RT.HYPERLINK, is_external=True))
+    run = OxmlElement('w:r'); node = OxmlElement('w:t'); node.text = 'alpes-it.ru'
+    run.append(node); link.append(run); footer._p.append(link)
     lookup = {s['id']: s for s in data['sources']}
     for kind, value in blocks(data):
-        if kind == 'title': doc.add_paragraph(value, 'Title')
+        if kind == 'pagebreak': doc.add_page_break()
+        elif kind == 'title': doc.add_paragraph(value, 'Title')
         elif kind == 'heading': doc.add_heading(value, 1)
         elif kind == 'refs':
             p = doc.add_paragraph()

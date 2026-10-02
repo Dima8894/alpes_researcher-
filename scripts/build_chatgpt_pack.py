@@ -25,6 +25,7 @@ INTRO = '''Alpes Researcher | Экспорт PDF и Word | Версия 1.0
  "status": "checked", "entity": "Объект", "period": "Период данных",
  "published_at": "Дата публикации либо неизвестно", "note": "Ограничение/краткая выдержка"}]
 }
+summary — короткое резюме до пяти пунктов, ориентир до 1200 знаков; детали в sections.
 Это схема, не готовые данные; даты и поля нужно заполнить реально проверенными значениями.
 kind: fact, claim, hypothesis, gap, action. fact/claim требуют sources с существующими ID.
 У hypothesis обязательны alternative (альтернативное объяснение) и question (проверочный вопрос).

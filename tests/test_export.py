@@ -59,6 +59,10 @@ class ExportTests(unittest.TestCase):
             from pypdf import PdfReader
             reader = PdfReader(dest/'REPORT.pdf')
             pdftext = ''.join(page.extract_text() for page in reader.pages)
+            self.assertIn('Главное за минуту', reader.pages[0].extract_text())
+            self.assertNotIn('Бизнес и экономика', reader.pages[0].extract_text())
+            self.assertIn('Бизнес и экономика', reader.pages[1].extract_text())
+            self.assertIn('Основано на методологии компании Альпес', pdftext)
             with zipfile.ZipFile(dest/'REPORT.docx') as archive:
                 xml = ET.fromstring(archive.read('word/document.xml'))
                 doctext = ''.join(xml.itertext())
@@ -71,6 +75,7 @@ class ExportTests(unittest.TestCase):
                         self.assertIn(''.join(value.split()), ''.join(rendered.split()))
             uris = [str(a.get_object().get('/A', {}).get('/URI','')) for p in reader.pages for a in p.get('/Annots', [])]
             self.assertIn('https://example.org/', uris)
+            self.assertIn('https://alpes-it.ru', uris)
             with self.assertRaisesRegex(ValueError, 'уже существует'): m.export(self.data, dest)
 
     def test_source_ledger_is_plain_text(self):
