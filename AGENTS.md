@@ -13,3 +13,5 @@ Export up to three files via scripts/export_report.py when available. Source dat
 The code cannot verify the truth of evidence; its validators only verify structure and traceability.
 Preserve the AGPL license, attribution and font license. No external outreach without explicit user instruction.
 Maintainer checks: python3 -m unittest discover -s tests; python3 scripts/build_chatgpt_pack.py --check.
+
+For user-facing copy, follow docs/VOICE.md. Voice rules are embedded in chatgpt/00_PROJECT_INSTRUCTIONS.txt; users do not need to install Sepia or load another file.
