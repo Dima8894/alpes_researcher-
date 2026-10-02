@@ -154,13 +154,13 @@ def write_pdf(data, path, font):
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, HRFlowable
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, Table, TableStyle, Spacer
     pdfmetrics.registerFont(TTFont('ReportRegular', str(font)))
     bold = font.with_name('Manrope-SemiBold.ttf') if font.name == 'Manrope-Regular.ttf' else font
     pdfmetrics.registerFont(TTFont('ReportBold', str(bold if bold.exists() else font)))
     styles = {}
     for key, size, leading, after, before, strong in [
-        ('title', 24, 31, 16, 0, False), ('heading', 16, 22, 12, 22, True),
+        ('title', 16, 22, 0, 0, True), ('heading', 16, 22, 12, 22, True),
         ('label', 10.5, 15, 5, 13, True), ('body', 10.5, 16, 9, 0, False),
         ('meta', 8.5, 13, 12, 0, False), ('refs', 8, 12, 9, 0, False)]:
         styles[key] = ParagraphStyle(key, fontName='ReportBold' if strong else 'ReportRegular',
@@ -173,8 +173,26 @@ def write_pdf(data, path, font):
     lookup = {source['id']: source for source in data['sources']}
     story = []
     in_brief = True
+    brief = []
+    collecting_brief = False
+    def panel(content, background, accent=False, padding=16):
+        # A real layout container: padding contributes to measured height.
+        box = Table([[content]], colWidths=[A4[0]-108], splitByRow=1, splitInRow=1)
+        commands = [('BACKGROUND', (0,0), (-1,-1), colors.HexColor(background)),
+                    ('LEFTPADDING', (0,0), (-1,-1), padding),
+                    ('RIGHTPADDING', (0,0), (-1,-1), padding),
+                    ('TOPPADDING', (0,0), (-1,-1), padding),
+                    ('BOTTOMPADDING', (0,0), (-1,-1), padding)]
+        if accent:
+            commands.append(('LINEBEFORE', (0,0), (0,-1), 2.5, colors.HexColor('#4c9995')))
+        box.setStyle(TableStyle(commands))
+        return box
     for kind, value in blocks(data):
         if kind == 'pagebreak':
+            if brief:
+                story.append(panel(brief, '#f1f7f6', accent=True))
+                brief = []
+            collecting_brief = False
             in_brief = False
             story.append(PageBreak())
             continue
@@ -187,11 +205,21 @@ def write_pdf(data, path, font):
             markup = ' · '.join(lines)
         else:
             markup = escape(value).replace('\n', '<br/>')
+        if kind == 'title':
+            story.append(panel([Paragraph(markup, styles['title'])], '#e2efed'))
+            story.append(Spacer(1, 14))
+            continue
         if in_brief and kind == 'heading':
-            rule = HRFlowable(width='100%', thickness=0.7, color=colors.HexColor('#9dc9c5'), spaceBefore=12, spaceAfter=2)
-            rule.keepWithNext = True
-            story.append(rule)
-        story.append(Paragraph(markup, styles[kind]))
+            collecting_brief = True
+        paragraph = Paragraph(markup, styles[kind])
+        if collecting_brief:
+            brief.append(paragraph)
+        elif kind == 'label' and value in ('Следующий шаг', 'План разговора', 'Ключевой вывод'):
+            callout = panel([paragraph], '#eef3f8', padding=10)
+            callout.keepWithNext = True
+            story.extend([Spacer(1, 6), callout, Spacer(1, 8)])
+        else:
+            story.append(paragraph)
     def page_number(canvas, doc):
         canvas.saveState()
         canvas.setFont('ReportRegular', 8)
@@ -231,7 +259,7 @@ def write_docx(data, path):
     for style in doc.styles:
         for border in list(style.element.iter(qn('w:pBdr'))):
             border.getparent().remove(border)
-    doc.styles['Title'].font.size = Pt(24)
+    doc.styles['Title'].font.size = Pt(16)
     doc.styles['Title'].font.bold = False
     doc.styles['Title'].font.color.rgb = RGBColor.from_string('000000')
     doc.styles['Heading 1'].font.size = Pt(15)

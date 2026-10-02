@@ -105,6 +105,17 @@ class ExportTests(unittest.TestCase):
             self.assertTrue(any('Manrope-SemiBold' in name for name in names))
             self.assertIn(self.data['title'], reader.pages[0].extract_text().replace('\n', ' '))
 
+    def test_long_summary_panel_keeps_all_text(self):
+        self.data['summary'][0]['text'] = ('Long summary text with wrapping. ' * 120) + 'END_OF_SUMMARY'
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp)/'result'
+            m.export(self.data, dest)
+            from pypdf import PdfReader
+            reader = PdfReader(dest/'REPORT.pdf')
+            text = ''.join(page.extract_text() for page in reader.pages)
+            self.assertIn('END_OF_SUMMARY', text)
+            self.assertIn(self.data['sections'][-1]['title'], text)
+
     def test_failed_validation_creates_nothing(self):
         self.data['summary'] = []
         with tempfile.TemporaryDirectory() as tmp:
