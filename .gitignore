@@ -1,0 +1,14 @@
+.env
+.env.*
+!.env.example
+private/
+research/companies/
+data/
+outputs/
+dist/
+work/
+.venv/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
