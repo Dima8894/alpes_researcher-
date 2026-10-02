@@ -15,3 +15,5 @@ Preserve the AGPL license, attribution and font license. No external outreach wi
 Maintainer checks: python3 -m unittest discover -s tests; python3 scripts/build_chatgpt_pack.py --check.
 
 For user-facing copy, follow docs/VOICE.md. Voice rules are embedded in chatgpt/00_PROJECT_INSTRUCTIONS.txt; users do not need to install Sepia or load another file.
+
+Keep the B2B workflow vendor-neutral. Do not import example product names, capabilities, qualification thresholds or commercial terms into the template.
