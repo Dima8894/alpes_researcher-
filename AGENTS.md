@@ -17,3 +17,5 @@ Maintainer checks: python3 -m unittest discover -s tests; python3 scripts/build_
 For user-facing copy, follow docs/VOICE.md. Voice rules are embedded in chatgpt/00_PROJECT_INSTRUCTIONS.txt; users do not need to install Sepia or load another file.
 
 Keep the B2B workflow vendor-neutral. Do not import example product names, capabilities, qualification thresholds or commercial terms into the template.
+
+The user owns their negotiations and deal. Do not frame research as lead handoff or escalation to another salesperson. Support follow-through and on-demand context refresh.
