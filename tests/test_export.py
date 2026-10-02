@@ -102,7 +102,7 @@ class ExportTests(unittest.TestCase):
             names = {str(font.get_object().get('/BaseFont')) for page in reader.pages
                      for font in page['/Resources']['/Font'].get_object().values()}
             self.assertTrue(any('Manrope-Regular' in name for name in names))
-            self.assertTrue(any('Manrope-Bold' in name for name in names))
+            self.assertTrue(any('Manrope-SemiBold' in name for name in names))
             self.assertIn(self.data['title'], reader.pages[0].extract_text().replace('\n', ' '))
 
     def test_failed_validation_creates_nothing(self):

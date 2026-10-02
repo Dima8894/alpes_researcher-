@@ -154,19 +154,22 @@ def write_pdf(data, path, font):
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, HRFlowable
     pdfmetrics.registerFont(TTFont('ReportRegular', str(font)))
-    bold = font.with_name('Manrope-Bold.ttf') if font.name == 'Manrope-Regular.ttf' else font
+    bold = font.with_name('Manrope-SemiBold.ttf') if font.name == 'Manrope-Regular.ttf' else font
     pdfmetrics.registerFont(TTFont('ReportBold', str(bold if bold.exists() else font)))
     styles = {}
     for key, size, leading, after, before, strong in [
-        ('title', 25, 31, 16, 0, True), ('heading', 17, 23, 12, 22, True),
+        ('title', 24, 31, 16, 0, False), ('heading', 16, 22, 12, 22, True),
         ('label', 10.5, 15, 5, 13, True), ('body', 10.5, 16, 9, 0, False),
         ('meta', 8.5, 13, 12, 0, False), ('refs', 8, 12, 9, 0, False)]:
         styles[key] = ParagraphStyle(key, fontName='ReportBold' if strong else 'ReportRegular',
             fontSize=size, leading=leading, spaceAfter=after, spaceBefore=before,
             textColor=colors.HexColor('#191b20' if key not in ('meta','refs') else '#626874'),
             keepWithNext=key in ('title','heading','label'), splitLongWords=True)
+    styles['heading'].textColor = colors.HexColor('#176b70')
+    styles['label'].textColor = colors.HexColor('#324b62')
+    styles['refs'].textColor = colors.HexColor('#356d97')
     lookup = {source['id']: source for source in data['sources']}
     story = []
     in_brief = True
@@ -184,6 +187,10 @@ def write_pdf(data, path, font):
             markup = ' · '.join(lines)
         else:
             markup = escape(value).replace('\n', '<br/>')
+        if in_brief and kind == 'heading':
+            rule = HRFlowable(width='100%', thickness=0.7, color=colors.HexColor('#9dc9c5'), spaceBefore=12, spaceAfter=2)
+            rule.keepWithNext = True
+            story.append(rule)
         story.append(Paragraph(markup, styles[kind]))
     def page_number(canvas, doc):
         canvas.saveState()
@@ -224,16 +231,16 @@ def write_docx(data, path):
     for style in doc.styles:
         for border in list(style.element.iter(qn('w:pBdr'))):
             border.getparent().remove(border)
-    doc.styles['Title'].font.size = Pt(25)
-    doc.styles['Title'].font.bold = True
+    doc.styles['Title'].font.size = Pt(24)
+    doc.styles['Title'].font.bold = False
     doc.styles['Title'].font.color.rgb = RGBColor.from_string('000000')
     doc.styles['Heading 1'].font.size = Pt(15)
-    doc.styles['Heading 1'].font.color.rgb = RGBColor.from_string('191B20')
+    doc.styles['Heading 1'].font.color.rgb = RGBColor.from_string('176B70')
     doc.styles['Heading 1'].font.bold = True
     doc.styles['Heading 1'].paragraph_format.space_before = Pt(20)
     doc.styles['Heading 2'].font.size = Pt(11)
     doc.styles['Heading 2'].font.bold = True
-    doc.styles['Heading 2'].font.color.rgb = RGBColor.from_string('191B20')
+    doc.styles['Heading 2'].font.color.rgb = RGBColor.from_string('324B62')
     doc.core_properties.author = 'Alpes Researcher'
     doc.core_properties.last_modified_by = 'Alpes Researcher'
     doc.core_properties.title = data['title']
@@ -262,7 +269,7 @@ def write_docx(data, path):
                 link.set(qn('r:id'), p.part.relate_to(s['url'], RT.HYPERLINK, is_external=True))
                 run = OxmlElement('w:r')
                 props = OxmlElement('w:rPr')
-                color = OxmlElement('w:color'); color.set(qn('w:val'), '626874'); props.append(color)
+                color = OxmlElement('w:color'); color.set(qn('w:val'), '356D97'); props.append(color)
                 run.append(props)
                 node = OxmlElement('w:t'); node.text = label; run.append(node)
                 link.append(run); p._p.append(link)

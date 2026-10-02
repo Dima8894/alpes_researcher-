@@ -12,4 +12,4 @@ Alpes Researcher. Разработка и сопровождение текущ�
 
 В assets/fonts включён PT Sans Regular, © ParaType, из Google Fonts. Лицензия SIL Open Font License сохранена в assets/fonts/OFL.txt. Шрифт используется экспортёром для отображения кириллицы.
 
-Manrope — Copyright 2018 The Manrope Project Authors. Статические начертания 450 и 700 получены из Manrope Variable из Google Fonts. SIL OFL 1.1: assets/fonts/Manrope-OFL.txt. Шрифты встроены в PDF и файл кода экспорта.
+Manrope — Copyright 2018 The Manrope Project Authors. Статические начертания 450, 600 и 700 получены из Manrope Variable из Google Fonts. SIL OFL 1.1: assets/fonts/Manrope-OFL.txt. Шрифты встроены в PDF и файл кода экспорта.

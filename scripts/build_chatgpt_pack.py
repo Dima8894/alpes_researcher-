@@ -46,7 +46,7 @@ BEGIN PYTHON
 
 
 def generated():
-    fonts = {name: base64.b64encode((ROOT/'assets/fonts'/name).read_bytes()).decode('ascii') for name in ('Manrope-Regular.ttf', 'Manrope-Bold.ttf')}
+    fonts = {name: base64.b64encode((ROOT/'assets/fonts'/name).read_bytes()).decode('ascii') for name in ('Manrope-Regular.ttf', 'Manrope-SemiBold.ttf')}
     license_text = (ROOT/'assets/fonts/Manrope-OFL.txt').read_text()
     return INTRO + '# Embedded Manrope fonts, SIL OFL 1.1. License follows.\n' + '\n'.join(('# '+line).rstrip() for line in license_text.splitlines()) + '\n_EMBEDDED_FONTS = ' + repr(fonts) + '\n' + (ROOT/'scripts/export_report.py').read_text(encoding='utf-8') + '\nEND PYTHON\n'
 
