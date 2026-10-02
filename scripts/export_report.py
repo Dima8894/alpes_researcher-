@@ -228,19 +228,18 @@ def write_docx(data, path):
 
 
 def write_sources(data, path):
-    parts = ['<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
-             '<title>Источники исследования</title><style>body{font:17px/1.65 system-ui,sans-serif;color:#152438;max-width:850px;margin:48px auto;padding:0 24px}h1{font-size:30px}h2{font-size:20px}article{border-top:1px solid #dbe2e7;padding:18px 0}a{color:#166148;overflow-wrap:anywhere}p{white-space:pre-wrap}small{color:#526175}</style>',
-             '<h1>' + escape(data['title']) + '</h1><p>Источники · срез ' + escape(data['date']) + '</p>']
-    for s in data['sources']:
-        parts.append('<article id="'+s['id']+'"><h2>'+escape(s['id']+' · '+s['title'])+'</h2>')
-        if s.get('url'):
-            url = escape(s['url'], quote=True)
-            parts.append(f'<a href="{url}" rel="noreferrer">{url}</a>')
-        parts.append('<p>'+escape(STATUS_NAMES[s['status']]+' · проверка '+s['checked_at'])+'</p>')
-        for key, label in [('locator','Материал'), ('entity','Объект'), ('published_at','Публикация'), ('period','Период'), ('note','Примечание')]:
-            if s.get(key): parts.append('<p>'+escape(label+': '+s[key])+'</p>')
-        parts.append('</article>')
-    parts.append('</html>')
+    """Plain text source ledger. Clickable citations remain in PDF and Word."""
+    parts = [data['title'], 'Источники · срез ' + data['date'], '']
+    for source in data['sources']:
+        parts.append(source['id'] + ' · ' + source['title'])
+        if source.get('url'):
+            parts.append(source['url'])
+        parts.append(STATUS_NAMES[source['status']] + ' · проверка ' + source['checked_at'])
+        for key, label in [('locator', 'Материал'), ('entity', 'Объект'),
+                           ('published_at', 'Публикация'), ('period', 'Период'), ('note', 'Примечание')]:
+            if source.get(key):
+                parts.append(label + ': ' + source[key])
+        parts.append('')
     path.write_text('\n'.join(parts), encoding='utf-8')
 
 
@@ -256,9 +255,9 @@ def export(data, output, font=None):
         staging = Path(tmp)
         write_pdf(data, staging/'REPORT.pdf', font)
         write_docx(data, staging/'REPORT.docx')
-        write_sources(data, staging/'SOURCES.html')
+        write_sources(data, staging/'SOURCES.txt')
         staging.rename(output)
-    return [output / name for name in ('REPORT.pdf', 'REPORT.docx', 'SOURCES.html')]
+    return [output / name for name in ('REPORT.pdf', 'REPORT.docx', 'SOURCES.txt')]
 
 
 def main():

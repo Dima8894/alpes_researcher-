@@ -55,7 +55,7 @@ class ExportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp)/'result'
             m.export(self.data, dest)
-            self.assertEqual({p.name for p in dest.iterdir()}, {'REPORT.pdf', 'REPORT.docx', 'SOURCES.html'})
+            self.assertEqual({p.name for p in dest.iterdir()}, {'REPORT.pdf', 'REPORT.docx', 'SOURCES.txt'})
             from pypdf import PdfReader
             reader = PdfReader(dest/'REPORT.pdf')
             pdftext = ''.join(page.extract_text() for page in reader.pages)
@@ -73,15 +73,17 @@ class ExportTests(unittest.TestCase):
             self.assertIn('https://example.org/', uris)
             with self.assertRaisesRegex(ValueError, 'уже существует'): m.export(self.data, dest)
 
-    def test_escape_html_and_pdf_markup(self):
+    def test_source_ledger_is_plain_text(self):
         self.data['title'] = '<script>alert("x")</script> & Кириллица'
         self.data['sources'][0]['note'] = '<img src=x onerror=alert(1)>'
         with tempfile.TemporaryDirectory() as tmp:
-            dest=Path(tmp)/'result'; m.export(self.data,dest)
-            html=(dest/'SOURCES.html').read_text()
-            self.assertNotIn('<script>',html)
-            self.assertNotIn('<img',html)
-            self.assertIn('&lt;script&gt;',html)
+            dest = Path(tmp)/'result'; m.export(self.data, dest)
+            ledger = (dest/'SOURCES.txt').read_text()
+            self.assertTrue(ledger.startswith(self.data['title']))
+            self.assertIn('https://example.org/', ledger)
+            self.assertIn(self.data['sources'][0]['note'], ledger)
+            self.assertNotIn('<!doctype html>', ledger)
+            self.assertEqual(list(dest.glob('*.html')), [])
 
     def test_failed_validation_creates_nothing(self):
         self.data['summary'] = []
