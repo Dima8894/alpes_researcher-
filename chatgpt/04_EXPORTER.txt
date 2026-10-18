@@ -9,7 +9,7 @@ Alpes Researcher | Экспорт PDF и Word | Версия 1.0
 
 КОНТРАКТ JSON
 {
- "title": "Название исследования", "date": "YYYY-MM-DD",
+ "company_name": "Название компании", "title": "Исследование компании: Название компании", "date": "YYYY-MM-DD",
  "objective": "Рабочий вопрос", "identity": "Компания и проверенное юрлицо либо неизвестно",
  "summary": [{"kind": "gap", "text": "Ключевой пробел", "sources": []}],
  "sections": [{"title": "Раздел", "items": [{"kind": "action", "text": "Следующий шаг", "sources": []}]}],
@@ -19,6 +19,7 @@ Alpes Researcher | Экспорт PDF и Word | Версия 1.0
  "published_at": "Дата публикации либо неизвестно", "note": "Ограничение/краткая выдержка"}]
 }
 У каждого items/summary можно указать label — короткий смысловой заголовок.
+company_name — название исследуемой компании для имён PDF и Word; дата среза добавляется автоматически. Для старых JSON имя берётся из title.
 Название отчёта: «Исследование компании: [название]». Manrope встроен в код ниже.
 summary — короткое резюме до пяти пунктов, ориентир до 1200 знаков; детали в sections.
 Это схема, не готовые данные; даты и поля нужно заполнить реально проверенными значениями.
@@ -179,6 +180,8 @@ def validate(data):
         raise ValueError("Отчёт должен быть объектом JSON")
     for key in ("title", "objective", "identity"):
         text(data.get(key), key, 1500)
+    if "company_name" in data:
+        text(data["company_name"], "company_name", 500)
     iso_date(data.get("date"), "date")
     sources = data.get("sources")
     if not isinstance(sources, list) or len(sources) > 150:
@@ -452,6 +455,15 @@ def write_sources(data, path):
     path.write_text('\n'.join(parts), encoding='utf-8')
 
 
+def report_names(data):
+    company = data.get('company_name') or re.sub(r'^Исследование компании\s*:\s*', '', data['title'], flags=re.I)
+    company = re.sub(r'[<>:"/\\|?*\x00-\x1f]', ' ', company)
+    company = re.sub(r'\s+', ' ', company).strip(' .')
+    company = company.encode('utf-8')[:140].decode('utf-8', errors='ignore').rstrip(' .') or 'Компания'
+    stem = f"Исследование — {company} — {data['date']}"
+    return (stem + '.pdf', stem + '.docx', 'SOURCES.txt')
+
+
 def export(data, output, font=None):
     validate(data)
     font = font_path(font)
@@ -462,11 +474,12 @@ def export(data, output, font=None):
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.alpes-', dir=output.parent) as tmp:
         staging = Path(tmp)
-        write_pdf(data, staging/'REPORT.pdf', font)
-        write_docx(data, staging/'REPORT.docx')
-        write_sources(data, staging/'SOURCES.txt')
+        names = report_names(data)
+        write_pdf(data, staging/names[0], font)
+        write_docx(data, staging/names[1])
+        write_sources(data, staging/names[2])
         staging.rename(output)
-    return [output / name for name in ('REPORT.pdf', 'REPORT.docx', 'SOURCES.txt')]
+    return [output / name for name in names]
 
 
 def main():

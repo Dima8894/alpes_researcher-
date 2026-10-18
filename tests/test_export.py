@@ -16,6 +16,15 @@ class ExportTests(unittest.TestCase):
     def setUp(self):
         self.data = json.loads((ROOT/'examples/demo_report.json').read_text())
 
+    def test_company_filenames(self):
+        self.data['company_name'] = 'ООО «Учебный / Север»: опт'
+        names = m.report_names(self.data)
+        self.assertEqual(names[0], 'Исследование — ООО «Учебный Север» опт — 2026-01-01.pdf')
+        self.data['company_name'] = 'Я' * 500
+        self.assertLess(len(m.report_names(self.data)[0].encode('utf-8')), 255)
+        self.data['company_name'] = '../'
+        self.assertNotIn('/', m.report_names(self.data)[0])
+
     def test_valid_example(self):
         m.validate(self.data)
 
@@ -55,15 +64,15 @@ class ExportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp)/'result'
             m.export(self.data, dest)
-            self.assertEqual({p.name for p in dest.iterdir()}, {'REPORT.pdf', 'REPORT.docx', 'SOURCES.txt'})
+            self.assertEqual({p.name for p in dest.iterdir()}, {'Исследование — Учебная компания — 2026-01-01.pdf', 'Исследование — Учебная компания — 2026-01-01.docx', 'SOURCES.txt'})
             from pypdf import PdfReader
-            reader = PdfReader(dest/'REPORT.pdf')
+            reader = PdfReader(dest/m.report_names(self.data)[0])
             pdftext = ''.join(page.extract_text() for page in reader.pages)
             self.assertIn('Главное за минуту', reader.pages[0].extract_text())
             self.assertNotIn('Бизнес и экономика', reader.pages[0].extract_text())
             self.assertIn('Бизнес и экономика', reader.pages[1].extract_text())
             self.assertIn('Основано на методологии компании Альпес', pdftext)
-            with zipfile.ZipFile(dest/'REPORT.docx') as archive:
+            with zipfile.ZipFile(dest/m.report_names(self.data)[1]) as archive:
                 xml = ET.fromstring(archive.read('word/document.xml'))
                 doctext = ''.join(xml.itertext())
                 self.assertIn('https://example.org/', archive.read('word/_rels/document.xml.rels').decode())
@@ -98,7 +107,7 @@ class ExportTests(unittest.TestCase):
             dest = Path(tmp)/'result'
             ns['export'](self.data, dest)
             from pypdf import PdfReader
-            reader = PdfReader(dest/'REPORT.pdf')
+            reader = PdfReader(dest/m.report_names(self.data)[0])
             names = {str(font.get_object().get('/BaseFont')) for page in reader.pages
                      for font in page['/Resources']['/Font'].get_object().values()}
             self.assertTrue(any('Manrope-Regular' in name for name in names))
@@ -111,7 +120,7 @@ class ExportTests(unittest.TestCase):
             dest = Path(tmp)/'result'
             m.export(self.data, dest)
             from pypdf import PdfReader
-            reader = PdfReader(dest/'REPORT.pdf')
+            reader = PdfReader(dest/m.report_names(self.data)[0])
             text = ''.join(page.extract_text() for page in reader.pages)
             self.assertIn('END_OF_SUMMARY', text)
             self.assertIn(self.data['sections'][-1]['title'], text)

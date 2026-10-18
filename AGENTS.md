@@ -4,7 +4,7 @@ This repository is a ChatGPT-first conversational research template, not a web a
 Read chatgpt/00_PROJECT_INSTRUCTIONS.txt, then the three numbered methodology files.
 On user “Старт”, conduct the adaptive onboarding; don't install or start a server.
 User instructions override the template. Use existing context; don't force redundant interviews.
-No company, employee, product, sales-department focus or research target is preconfigured.
+Focus on manufacturers, importers and distributors with field sales teams. Personalize to the user’s products, territory and commercial goals; no specific company or employee is preconfigured.
 Research from public evidence; distinguish facts, company claims, hypotheses and unknowns.
 User profiles and research belong in ignored private/ or in the user's ChatGPT project, never in distribution.
 Never commit secrets, chat transcripts, real company dossiers or personal profile data.
@@ -16,6 +16,6 @@ Maintainer checks: python3 -m unittest discover -s tests; python3 scripts/build_
 
 For user-facing copy, follow docs/VOICE.md. Voice rules are embedded in chatgpt/00_PROJECT_INSTRUCTIONS.txt; users do not need to install Sepia or load another file.
 
-Keep the B2B workflow vendor-neutral. Do not import example product names, capabilities, qualification thresholds or commercial terms into the template.
+Include transparent Alpes and Sellout MCP credits in repository packaging. Do not bias research conclusions toward Sellout or assume the user sells it. Do not invent product capabilities, qualification thresholds or commercial terms.
 
 The user owns their negotiations and deal. Do not frame research as lead handoff or escalation to another salesperson. Support follow-through and on-demand context refresh.

@@ -48,6 +48,8 @@ def validate(data):
         raise ValueError("Отчёт должен быть объектом JSON")
     for key in ("title", "objective", "identity"):
         text(data.get(key), key, 1500)
+    if "company_name" in data:
+        text(data["company_name"], "company_name", 500)
     iso_date(data.get("date"), "date")
     sources = data.get("sources")
     if not isinstance(sources, list) or len(sources) > 150:
@@ -321,6 +323,15 @@ def write_sources(data, path):
     path.write_text('\n'.join(parts), encoding='utf-8')
 
 
+def report_names(data):
+    company = data.get('company_name') or re.sub(r'^Исследование компании\s*:\s*', '', data['title'], flags=re.I)
+    company = re.sub(r'[<>:"/\\|?*\x00-\x1f]', ' ', company)
+    company = re.sub(r'\s+', ' ', company).strip(' .')
+    company = company.encode('utf-8')[:140].decode('utf-8', errors='ignore').rstrip(' .') or 'Компания'
+    stem = f"Исследование — {company} — {data['date']}"
+    return (stem + '.pdf', stem + '.docx', 'SOURCES.txt')
+
+
 def export(data, output, font=None):
     validate(data)
     font = font_path(font)
@@ -331,11 +342,12 @@ def export(data, output, font=None):
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='.alpes-', dir=output.parent) as tmp:
         staging = Path(tmp)
-        write_pdf(data, staging/'REPORT.pdf', font)
-        write_docx(data, staging/'REPORT.docx')
-        write_sources(data, staging/'SOURCES.txt')
+        names = report_names(data)
+        write_pdf(data, staging/names[0], font)
+        write_docx(data, staging/names[1])
+        write_sources(data, staging/names[2])
         staging.rename(output)
-    return [output / name for name in ('REPORT.pdf', 'REPORT.docx', 'SOURCES.txt')]
+    return [output / name for name in names]
 
 
 def main():
